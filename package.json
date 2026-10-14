@@ -1,0 +1,126 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "digup",
+  "title": "DigUp",
+  "description": "Search your Mac by what's in it, all from Raycast: pictures, PDFs, documents, recordings, videos, code, and your iMessage and Beeper chats with their attachments. Runs on DigUp's local EmbeddingGemma 2 index.",
+  "icon": "icon.png",
+  "author": "viraat",
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "search-files",
+      "title": "Dig Up",
+      "subtitle": "DigUp",
+      "description": "Describe a file in your own words and dig it up: pictures, screenshots, PDFs, documents, recordings, videos and chats. Start with \"code:\" to search code.",
+      "mode": "view"
+    },
+    {
+      "name": "search-messages",
+      "title": "Dig Up Messages",
+      "subtitle": "DigUp",
+      "description": "Search iMessage and Beeper (WhatsApp, Messenger, Discord, LinkedIn…) chats and their attachments by meaning.",
+      "mode": "view"
+    },
+    {
+      "name": "search-pictures",
+      "title": "Dig Up Pictures",
+      "subtitle": "DigUp",
+      "description": "Pictures, screenshots and video moments as a grid.",
+      "mode": "view"
+    },
+    {
+      "name": "search-code",
+      "title": "Dig Up Code",
+      "subtitle": "DigUp",
+      "description": "Search the code DigUp has indexed by what it does, or by a name in it.",
+      "mode": "view"
+    },
+    {
+      "name": "sync-messages",
+      "title": "Sync Messages",
+      "subtitle": "DigUp",
+      "description": "Export new iMessage and Beeper messages and attachments for DigUp to index.",
+      "mode": "no-view"
+    },
+    {
+      "name": "index-status",
+      "title": "Index Status",
+      "subtitle": "DigUp",
+      "description": "What's in DigUp's index.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "codeEditor",
+      "title": "Open Code In",
+      "description": "Where code results open, at the line that matched.",
+      "type": "dropdown",
+      "required": false,
+      "default": "digup",
+      "data": [
+        {
+          "title": "Same as DigUp",
+          "value": "digup"
+        },
+        {
+          "title": "Zed",
+          "value": "dev.zed.Zed"
+        },
+        {
+          "title": "Cursor",
+          "value": "com.todesktop.230313mzl4w4u92"
+        },
+        {
+          "title": "Visual Studio Code",
+          "value": "com.microsoft.VSCode"
+        },
+        {
+          "title": "Windsurf",
+          "value": "com.exafunction.windsurf"
+        },
+        {
+          "title": "Sublime Text",
+          "value": "com.sublimetext.4"
+        },
+        {
+          "title": "Xcode",
+          "value": "com.apple.dt.Xcode"
+        },
+        {
+          "title": "The File's Default App",
+          "value": ""
+        }
+      ]
+    },
+    {
+      "name": "digupPath",
+      "title": "digup Helper",
+      "description": "The digup command-line helper. Leave empty to use the one inside /Applications/DigUp.app.",
+      "type": "textfield",
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.7.3",
+    "@raycast/utils": "^2.3.2"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.6.0"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint"
+  }
+}
