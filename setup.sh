@@ -21,8 +21,17 @@ done
 
 say() { print -P "%F{green}==>%f $1"; }
 [[ "$(uname -m)" == arm64 ]] || { echo "DigUp needs an Apple Silicon Mac"; exit 1; }
-command -v node >/dev/null || { echo "Node.js is needed (brew install node)"; exit 1; }
-[[ -d /Applications/Raycast.app ]] || { echo "Raycast is needed (brew install --cask raycast)"; exit 1; }
+if ! command -v node >/dev/null; then
+  command -v brew >/dev/null || { echo "Node.js is needed: https://nodejs.org (or install Homebrew first)"; exit 1; }
+  say "Installing Node.js"
+  brew install node
+fi
+if [[ ! -d /Applications/Raycast.app ]]; then
+  command -v brew >/dev/null || { echo "Raycast is needed: https://raycast.com"; exit 1; }
+  say "Installing Raycast"
+  brew install --cask raycast
+  open -a Raycast
+fi
 
 DIGUP=/Applications/DigUp.app/Contents/Helpers/digup
 if [[ ! -x $DIGUP ]]; then
@@ -63,12 +72,18 @@ if (( MESSAGES )); then
   say "Syncing iMessage and Beeper"
   scripts/install-sync-agent.sh
   HELPER="$HOME/Library/Application Support/DigUp Messages Sync/DigUp Messages Sync"
-  print -P "
-%F{yellow}One step only you can do:%f give Full Disk Access to the message sync, so it can read iMessage and Contacts.
-  System Settings → Privacy & Security → Full Disk Access → + → ⇧⌘G →
-  $HELPER
-(Beeper works without it.)"
-  open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles" || true
+  # Has the sync read iMessage yet? Its export step logs within a minute or two; until then, assume it needs access.
+  LAST=$(grep '"step":"export"' "$HOME/Library/Application Support/DigUp Messages Sync/sync.log" 2>/dev/null | tail -1)
+  if [[ -n "$LAST" && "$LAST" != *"Full Disk Access"* ]]; then
+    : # it can read iMessage already
+  else
+    print -P "
+%F{yellow}One step only you can do:%f drag %BDigUp Messages Sync%b from the Finder window into the Full Disk Access
+list that just opened (and approve with Touch ID), so it can read iMessage and Contacts. Beeper works without it."
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles" || true
+    sleep 1
+    open -R "$HELPER"
+  fi
 fi
 
 print -P "
@@ -76,4 +91,5 @@ print -P "
   • Make it the default: Raycast Settings → General → move Raycast's hotkey (e.g. ⌥Space), then
     Extensions → DigUp → Dig Up → Hotkey → ⌘Space. ⌫ on an empty search goes back to regular Raycast.
   • Or as a fallback: type anything in Raycast, click ⚙ beside \"Use … with\", turn on Dig Up.
-  • The first pass over your files runs in the background; Dig Up → Index Status shows how far it is."
+  • The first pass over your files runs in the background; %BDig Up Status%b shows how far it is and fixes problems."
+open "raycast://extensions/viraat/digup/index-status" 2>/dev/null || true

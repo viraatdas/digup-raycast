@@ -15,27 +15,30 @@ All of it runs on your Mac with Google DeepMind's EmbeddingGemma 2 (through DigU
 
 ## Install
 
-Apple Silicon Mac, macOS 14+, [Raycast](https://raycast.com), Node.js and Homebrew.
+Apple Silicon Mac, macOS 14+. Paste this in Terminal:
 
 ```sh
-git clone https://github.com/viraatdas/digup-raycast && cd digup-raycast
-./setup.sh                  # or: ./setup.sh --no-messages, ./setup.sh --folders "~/Documents:~/Pictures"
+curl -fsSL https://raw.githubusercontent.com/viraatdas/digup-raycast/main/install.sh | zsh
 ```
 
-`setup.sh` installs DigUp and its model (865 MB, once), points it at your home folder (and `~/code` for code search),
-loads the extension into Raycast, runs DigUp in the background without its own window, and starts the message sync.
+It installs what's missing (Raycast, Node.js, DigUp and its 865 MB model), points DigUp at your home folder (and
+`~/code` for code search), loads the extension into Raycast, runs DigUp in the background without its own window, and
+starts syncing iMessage and Beeper. Run it again any time to update.
 
-Then, two things only you can do:
+Options go after `-s --`: `… | zsh -s -- --no-messages` (skip iMessage/Beeper), or
+`… | zsh -s -- --folders "~/Documents:~/Pictures"` (index these instead of the whole home folder).
 
-1. **Full Disk Access for messages.** System Settings → Privacy & Security → Full Disk Access → **+** → ⇧⌘G →
-   `~/Library/Application Support/DigUp Messages Sync/DigUp Messages Sync`. (iMessage and Contacts need it; Beeper
-   doesn't.)
-2. **Make Raycast open in DigUp.** Raycast Settings → General → move Raycast's hotkey (e.g. ⌥Space), then Extensions
-   → DigUp → **Dig Up** → Hotkey → ⌘Space. ⌫ on an empty search goes back to regular Raycast. Or keep Raycast as is
-   and add Dig Up as a fallback: type anything, click ⚙ beside "Use … with", turn on **Dig Up**.
+Then two things only you can do (setup opens both for you):
+
+1. **Let it read iMessage.** Drag **DigUp Messages Sync** from the Finder window into the Full Disk Access list and
+   approve with Touch ID. Beeper works without this.
+2. **Make Raycast open in DigUp** (optional). Raycast Settings → General → set Raycast's hotkey to ⌥Space, then
+   Extensions → DigUp → **Dig Up** → Hotkey → ⌘Space. Now ⌘Space searches DigUp, and ⌫ on an empty search goes to
+   regular Raycast. Or keep Raycast as it is and add Dig Up as a fallback: type anything, click ⚙ beside
+   "Use … with", turn on **Dig Up**.
 
 The first pass over your files runs in the background (minutes for a few hundred files, an hour or more for a big
-home folder). **Dig Up → Index Status** shows how far it is.
+home folder). **Dig Up Status** in Raycast shows how far it is, and fixes anything that isn't set up.
 
 ## Commands
 
@@ -46,7 +49,7 @@ home folder). **Dig Up → Index Status** shows how far it is.
 | **Dig Up Pictures** | Pictures, screenshots and video moments as a grid |
 | **Dig Up Code** | The code index |
 | **Sync Messages** | Export and index new messages now (it also happens on its own) |
-| **Index Status** | What's in DigUp's index |
+| **Dig Up Status** | Is everything set up, how far indexing is, one-click fixes |
 
 | Key | |
 |---|---|
@@ -88,7 +91,7 @@ Raycast ──► digup search-service × 2 (both indexes, merged by score) ─�
 for a in com.digup-ray.digup com.digup-ray.messages-sync; do
   launchctl bootout gui/$(id -u)/$a; rm ~/Library/LaunchAgents/$a.plist
 done
-rm -rf ~/Library/Application\ Support/DigUp\ Messages*
+rm -rf ~/Library/Application\ Support/DigUp\ Messages* ~/.digup-raycast
 brew uninstall --cask --zap digup      # DigUp itself, its model and index
 ```
 
@@ -97,6 +100,8 @@ Then remove the extension in Raycast (Settings → Extensions → DigUp → Unin
 ## Develop
 
 ```sh
+git clone https://github.com/viraatdas/digup-raycast && cd digup-raycast
+./setup.sh                           # same as the one-liner, from this checkout
 npm install
 npm run dev                          # loads it into Raycast, rebuilds on save
 scripts/install-sync-agent.sh        # after changing src/messages.ts or src/sync-cli.ts

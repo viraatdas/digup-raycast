@@ -48,9 +48,9 @@
     },
     {
       "name": "index-status",
-      "title": "Index Status",
+      "title": "Dig Up Status",
       "subtitle": "DigUp",
-      "description": "What's in DigUp's index.",
+      "description": "Is everything set up, how far indexing is, and one-click fixes.",
       "mode": "view"
     }
   ],
