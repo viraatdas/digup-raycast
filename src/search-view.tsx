@@ -218,7 +218,10 @@ function HitItem(props: {
     <Action
       title={`Open Chat in ${chat.source === "imessage" ? "Messages" : "Beeper"}`}
       icon={{ fileIcon: chatApp(chat) }}
-      onAction={() => openChat(chat, hit)}
+      onAction={async () => {
+        const passage = await props.service?.text(hit, false).catch(() => undefined);
+        await openChat(chat, hit, { query: props.query, passage });
+      }}
     />
   ) : null;
 

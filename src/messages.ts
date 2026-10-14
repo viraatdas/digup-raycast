@@ -62,17 +62,26 @@ export interface ChatEntry {
 }
 
 interface Manifest {
-  version: 1;
+  /** 2: month files carry a hidden list of their messages' ids (see writeMonth). */
+  version: number;
   imessageRowID: number;
   beeperRowID: number;
   chats: Record<string, ChatEntry>; // key: `${source}:${id}`
 }
 
+const MANIFEST_VERSION = 2;
+
 export function readManifest(): Manifest {
   try {
-    return JSON.parse(readFileSync(MANIFEST, "utf8")) as Manifest;
+    const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as Manifest;
+    // An export from before message ids: write every month again (unchanged text isn't rewritten, so DigUp doesn't
+    // index it again; only the id lists are new). The chats' folders stay.
+    if ((manifest.version ?? 1) < MANIFEST_VERSION) {
+      return { ...manifest, version: MANIFEST_VERSION, imessageRowID: 0, beeperRowID: 0 };
+    }
+    return manifest;
   } catch {
-    return { version: 1, imessageRowID: 0, beeperRowID: 0, chats: {} };
+    return { version: MANIFEST_VERSION, imessageRowID: 0, beeperRowID: 0, chats: {} };
   }
 }
 
@@ -218,6 +227,8 @@ interface Line {
   date: Date;
   sender: string;
   text: string;
+  /** Where the app finds the message: iMessage's guid, Beeper's sort key. */
+  ref: string;
 }
 
 /** A month of a chat as Markdown: a heading per day, a line per message. */
@@ -233,6 +244,17 @@ function monthFile(title: string, network: string, month: string, lines: Line[])
     out.push(`${line.sender}, ${time(line.date)}: ${line.text.replace(/\s*\n\s*/g, " / ")}`);
   }
   return out.join("\n") + "\n";
+}
+
+/** The ids of a month file's messages, in the order of its message lines (hidden, so DigUp doesn't index it). */
+function refsFile(monthPath: string): string {
+  return join(dirname(monthPath), "." + basename(monthPath, ".md") + ".refs.json");
+}
+
+function writeMonth(folder: string, title: string, network: string, month: string, lines: Line[]) {
+  const path = join(EXPORT_ROOT, folder, `${safeName(title)} · ${monthTitle(month)}.md`);
+  writeIfChanged(path, monthFile(title, network, month, lines));
+  writeIfChanged(refsFile(path), JSON.stringify(lines.map((line) => line.ref)));
 }
 
 // MARK: iMessage
@@ -353,14 +375,11 @@ function syncIMessage(manifest: Manifest, names: Map<string, string>, report: Re
       const date = appleDate(row.date);
       const month = monthKey(date);
       const sender = row.mine ? "Me" : (contactName(names, row.handle ?? undefined) ?? row.handle ?? title);
-      months.set(month, [...(months.get(month) ?? []), { date, sender, text }]);
+      months.set(month, [...(months.get(month) ?? []), { date, sender, text, ref: row.guid }]);
       entry.guids![month] = row.guid;
     }
     for (const [month, lines] of months) {
-      writeIfChanged(
-        join(EXPORT_ROOT, folder, `${safeName(title)} · ${monthTitle(month)}.md`),
-        monthFile(title, network, month, lines),
-      );
+      writeMonth(folder, title, network, month, lines);
       report.files++;
     }
 
@@ -412,6 +431,7 @@ interface BeeperRow {
   mine: number;
   type: string;
   text: string | null;
+  sortKey: string | number | null;
   attachments: string | null;
 }
 
@@ -466,7 +486,8 @@ function syncBeeper(manifest: Manifest, report: Report) {
     const rows = query<BeeperRow>(
       BEEPER_DB,
       `select id as rowid, roomID as room, senderContactID as sender, timestamp as ts, isSentByMe as mine, type,
-              json_extract(message, '$.text') as text, json_extract(message, '$.attachments') as attachments
+              json_extract(message, '$.text') as text, json_extract(message, '$.sortKey') as sortKey,
+              json_extract(message, '$.attachments') as attachments
        from mx_room_messages
        where roomID = ${quote(room)} and timestamp >= ${start} and isDeleted = 0
              and type in ('TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'VOICE', 'FILE')
@@ -480,7 +501,7 @@ function syncBeeper(manifest: Manifest, report: Report) {
       const text = row.text?.trim();
       if (text) {
         const month = monthKey(date);
-        months.set(month, [...(months.get(month) ?? []), { date, sender, text }]);
+        months.set(month, [...(months.get(month) ?? []), { date, sender, text, ref: String(row.sortKey ?? "") }]);
       }
       if (!row.attachments || row.rowid <= since) continue;
       let attachments: { id?: string; fileName?: string; mimeType?: string }[] = [];
@@ -510,10 +531,7 @@ function syncBeeper(manifest: Manifest, report: Report) {
       }
     }
     for (const [month, lines] of months) {
-      writeIfChanged(
-        join(EXPORT_ROOT, folder, `${safeName(title)} · ${monthTitle(month)}.md`),
-        monthFile(title, network, month, lines),
-      );
+      writeMonth(folder, title, network, month, lines);
       report.files++;
     }
   }
@@ -630,6 +648,46 @@ export function messageGuid(chat: ChatEntry, excerpt: string | undefined, month?
     }
   }
   return month ? chat.guids?.[month] : undefined;
+}
+
+const MESSAGE_LINE = /^[^:\n]{1,80}, \d{1,2}:\d{2}\s?[AP]M: /;
+const STOP_WORDS = new Set(["the", "and", "for", "that", "this", "with", "about", "what", "when", "where", "was", "were",
+  "you", "your", "she", "her", "his", "him", "they", "them", "said", "say", "message", "messages", "text", "chat"]); // prettier-ignore
+
+/** The message a hit on a month file points at, and its id: of the file's messages that are in the matched stretch
+ *  (`passage`, the segment's text), the one sharing the most words with the search and the excerpt's marked words. */
+export function messageAt(
+  path: string,
+  options: { passage?: string; query?: string; excerpt?: string },
+): { ref: string; line: string } | undefined {
+  let lines: string[];
+  let refs: string[];
+  try {
+    lines = readFileSync(path, "utf8")
+      .split("\n")
+      .filter((line) => MESSAGE_LINE.test(line));
+    refs = JSON.parse(readFileSync(refsFile(path), "utf8"));
+  } catch {
+    return undefined;
+  }
+  if (lines.length !== refs.length || lines.length === 0) return undefined;
+  const words = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}']{3,}/gu) ?? [];
+  const wanted = new Map<string, number>();
+  for (const word of words(options.query ?? "")) if (!STOP_WORDS.has(word)) wanted.set(word, 1);
+  for (const marked of (options.excerpt ?? "").match(/«([^»]+)»/g) ?? []) {
+    for (const word of words(marked)) wanted.set(word, 2);
+  }
+  const passage = options.passage?.replace(/[«»]/g, "");
+  let best = -1;
+  let bestScore = -1;
+  lines.forEach((line, index) => {
+    const body = line.replace(MESSAGE_LINE, "");
+    if (passage && !passage.includes(body.slice(0, 60))) return;
+    const score = [...new Set(words(line))].reduce((sum, word) => sum + (wanted.get(word) ?? 0), 0);
+    if (score > bestScore) [best, bestScore] = [index, score];
+  });
+  if (best < 0) return undefined;
+  return refs[best] ? { ref: refs[best], line: lines[best] } : undefined;
 }
 
 /** "2026-10" from an export file name ("Mom · Oct 2026.md"). */

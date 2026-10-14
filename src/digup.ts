@@ -59,16 +59,29 @@ export function helperInstalled(): boolean {
 
 /** One of DigUp's saved settings, or undefined (read from the defaults DigUp's app writes). */
 export function appSetting<T>(key: string): T | undefined {
+  let plist: string;
   try {
-    const plist = execFileSync("/usr/bin/defaults", ["export", BUNDLE_ID, "-"], { encoding: "utf8" });
-    const json = execFileSync("/usr/bin/plutil", ["-extract", key, "json", "-o", "-", "-"], {
+    plist = execFileSync("/usr/bin/defaults", ["export", BUNDLE_ID, "-"], { encoding: "utf8" });
+  } catch {
+    return undefined;
+  }
+  const extract = (format: "json" | "raw") =>
+    execFileSync("/usr/bin/plutil", ["-extract", key, format, "-o", "-", "-"], {
       input: plist,
       encoding: "utf8",
       stdio: ["pipe", "pipe", "ignore"],
     });
-    return JSON.parse(json) as T;
+  try {
+    return JSON.parse(extract("json")) as T; // arrays and dictionaries
   } catch {
-    return undefined;
+    // plutil won't write a lone string, number or boolean as JSON: "raw" prints it as is
+  }
+  try {
+    const raw = extract("raw").replace(/\n$/, "");
+    if (raw === "true" || raw === "false") return (raw === "true") as T;
+    return raw as T;
+  } catch {
+    return undefined; // not set
   }
 }
 

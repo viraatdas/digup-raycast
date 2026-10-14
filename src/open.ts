@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { APP_PATH, appSetting, clock, codeLine, Hit, moment, page, Preferences } from "./digup";
-import { ChatEntry, messageGuid, monthOfFile } from "./messages";
+import { ChatEntry, messageAt, messageGuid, monthOfFile } from "./messages";
 
 // Opening a result the way DigUp's panel does (Sources/DigUpApp/Moments.swift and CodeEditors.swift in DigUp):
 // recordings at their moment in QuickTime Player or IINA, PDFs with words from the match in Preview's search, and
@@ -182,15 +182,18 @@ export function chatApp(chat: ChatEntry): string {
   return chat.source === "imessage" ? MESSAGES_APP : BEEPER_APP;
 }
 
-/** Opens the chat a hit is in: Messages at the message when it can be found, Beeper at the thread. */
-export async function openChat(chat: ChatEntry, hit?: Hit) {
+/** Opens the chat a hit is in, at the message: the one in the matched stretch that best fits the search (see
+ *  `messageAt`). Messages scrolls to it; Beeper loads the thread around its sort key and selects it. */
+export async function openChat(chat: ChatEntry, hit?: Hit, context: { query?: string; passage?: string } = {}) {
   try {
+    const message = hit ? messageAt(hit.path, { ...context, excerpt: hit.excerpt }) : undefined;
     if (chat.source === "beeper") {
       if (!chat.handle) return await open(BEEPER_APP);
-      return await open(`beeper://select-thread/${encodeURIComponent(chat.handle)}/${encodeURIComponent(chat.id)}`);
+      const thread = `beeper://select-thread/${encodeURIComponent(chat.handle)}/${encodeURIComponent(chat.id)}`;
+      return await open(message ? `${thread}/${encodeURIComponent(message.ref)}` : thread);
     }
-    const guid = messageGuid(chat, hit?.excerpt, hit ? monthOfFile(hit.path) : undefined);
-    if (guid) return await open(`sms://open?message-guid=${encodeURIComponent(guid)}`, MESSAGES_APP);
+    const guid = message?.ref ?? messageGuid(chat, hit?.excerpt, hit ? monthOfFile(hit.path) : undefined);
+    if (guid) return await open(`messages://open?message-guid=${encodeURIComponent(guid)}`);
     if (chat.handle) return await open(`imessage://${chat.handle}`, MESSAGES_APP);
     await open(MESSAGES_APP);
   } catch (error) {
