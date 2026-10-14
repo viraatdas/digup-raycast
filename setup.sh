@@ -88,8 +88,7 @@ fi
 
 print -P "
 %F{green}Done.%f Open Raycast and type %Bdig up%b.
-  • Make it the default: Raycast Settings → General → move Raycast's hotkey (e.g. ⌥Space), then
-    Extensions → DigUp → Dig Up → Hotkey → ⌘Space. ⌫ on an empty search goes back to regular Raycast.
-  • Or as a fallback: type anything in Raycast, click ⚙ beside \"Use … with\", turn on Dig Up.
+  • Shorter: Raycast Settings → Extensions → DigUp → Dig Up → Alias (e.g. d) or Hotkey.
+  • As a fallback: type anything in Raycast, click ⚙ beside \"Use … with\", turn on Dig Up.
   • The first pass over your files runs in the background; %BDig Up Status%b shows how far it is and fixes problems."
 open "raycast://extensions/viraat/digup/index-status" 2>/dev/null || true

@@ -32,10 +32,11 @@ Then two things only you can do (setup opens both for you):
 
 1. **Let it read iMessage.** Drag **DigUp Messages Sync** from the Finder window into the Full Disk Access list and
    approve with Touch ID. Beeper works without this.
-2. **Make Raycast open in DigUp** (optional). Raycast Settings → General → set Raycast's hotkey to ⌥Space, then
-   Extensions → DigUp → **Dig Up** → Hotkey → ⌘Space. Now ⌘Space searches DigUp, and ⌫ on an empty search goes to
-   regular Raycast. Or keep Raycast as it is and add Dig Up as a fallback: type anything, click ⚙ beside
-   "Use … with", turn on **Dig Up**.
+2. **Get to it quickly** (optional). Open Raycast and type `dig up`. To make that shorter, Raycast Settings →
+   Extensions → DigUp → **Dig Up** → Alias (e.g. `d`) or Hotkey. To have typing in Raycast fall through to Dig Up,
+   type anything, click ⚙ beside "Use … with", and turn on **Dig Up**. If you'd rather ⌘Space open Dig Up directly,
+   move Raycast's own hotkey (General → e.g. ⌥Space) and give Dig Up ⌘Space; ⌫ on an empty search goes back to
+   Raycast.
 
 The first pass over your files runs in the background (minutes for a few hundred files, an hour or more for a big
 home folder). **Dig Up Status** in Raycast shows how far it is, and fixes anything that isn't set up.
